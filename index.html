@@ -1,128 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dice Dare Game</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>🎲 Dice Dare Game</h1>
-            <p class="subtitle">Similar to Deal or No Deal - Roll to eliminate dares!</p>
-        </header>
+      <header>
+        <h1>🎲 Dice Dare Game</h1>
+        <p class="subtitle">
+          Similar to Deal or No Deal - Roll to eliminate dares!
+        </p>
+      </header>
 
-        <div class="game-setup">
-            <div class="setup-section">
-                <h3>Game Setup</h3>
-                <div class="player-roles">
-                    <div class="role-selector">
-                        <label>
-                            <input type="radio" name="role" value="roller" checked>
-                            <span class="role-label">🎲 Roller</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="role" value="master">
-                            <span class="role-label">👑 Game Master</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="face-limits">
-                    <h4>Face Limits</h4>
-                    <div class="limit-options">
-                        <label>
-                            <input type="checkbox" id="roller-face-limit">
-                            <span>Roller has face limit</span>
-                        </label>
-                        <label>
-                            <input type="checkbox" id="master-face-limit">
-                            <span>Game Master has face limit</span>
-                        </label>
-                    </div>
-                </div>
-
-                <button id="start-game" class="btn btn-primary">Start Game</button>
+      <div class="game-setup">
+        <div class="setup-section">
+          <h3>Game Setup</h3>
+          <div class="player-roles">
+            <div class="role-selector">
+              <label>
+                <input type="radio" name="role" value="roller" checked />
+                <span class="role-label">🎲 Roller</span>
+              </label>
+              <label>
+                <input type="radio" name="role" value="master" />
+                <span class="role-label">👑 Game Master</span>
+              </label>
             </div>
+          </div>
+
+          <div class="face-limits">
+            <h4>Face Limits</h4>
+            <div class="limit-options">
+              <label>
+                <input type="checkbox" id="roller-face-limit" />
+                <span>Roller has face limit</span>
+              </label>
+              <label>
+                <input type="checkbox" id="master-face-limit" />
+                <span>Game Master has face limit</span>
+              </label>
+            </div>
+          </div>
+
+          <button id="start-game" class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="game-area" style="display: none">
+        <div class="game-info">
+          <div class="current-player">
+            <span id="current-role">🎲 Roller</span>
+          </div>
+          <div class="game-stats">
+            <span>Remaining: <span id="remaining-count">20</span></span>
+            <span>Rolled: <span id="rolled-count">0</span></span>
+          </div>
         </div>
 
-        <div class="game-area" style="display: none;">
-            <div class="game-info">
-                <div class="current-player">
-                    <span id="current-role">🎲 Roller</span>
-                </div>
-                <div class="game-stats">
-                    <span>Remaining: <span id="remaining-count">20</span></span>
-                    <span>Rolled: <span id="rolled-count">0</span></span>
-                </div>
-            </div>
-
-            <div class="dice-section">
-                <div class="dice-container">
-                    <div id="dice" class="dice">?</div>
-                </div>
-                <button id="roll-dice" class="btn btn-dice">Roll Dice</button>
-            </div>
-
-            <div class="center-dare-section">
-                <div class="center-dare-info">
-                    <h4>Center Dare Option</h4>
-                    <p id="center-dare-text">Dare #10: Strip naked and spank ass twenty times on each cheek</p>
-                    <button id="take-center-dare" class="btn btn-center">Take Center Dare</button>
-                </div>
-            </div>
-
-            <div class="dare-grid">
-                <h3>Dare List</h3>
-                <div id="dare-list" class="dare-grid-container">
-                    <!-- Dares will be populated by JavaScript -->
-                </div>
-            </div>
-
-            <div class="game-controls">
-                <button id="reset-game" class="btn btn-secondary">Reset Game</button>
-                <button id="show-rules" class="btn btn-info">Show Rules</button>
-            </div>
+        <div class="dice-section">
+          <div class="dice-container">
+            <div id="dice" class="dice">?</div>
+          </div>
+          <button id="roll-dice" class="btn btn-dice">Roll Dice</button>
         </div>
 
-        <div class="modal" id="rules-modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Game Rules</h2>
-                <div class="rules-content">
-                    <h3>How to Play</h3>
-                    <ul>
-                        <li>This is a dice game similar to Deal or No Deal</li>
-                        <li>You need a twenty-sided dice (or use an online roller like rolz.org)</li>
-                        <li>Two players: a Game Master and a Roller</li>
-                        <li>The Roller rolls dice to eliminate dares from the list</li>
-                        <li>The Game Master keeps track of rolled numbers</li>
-                        <li>When only one dare remains, it must be completed</li>
-                    </ul>
-                    
-                    <h3>Roller Advantage</h3>
-                    <p>The Roller can end the game early by choosing the "center dare" instead of continuing to roll. This gives them control over when the game ends.</p>
-                    
-                    <h3>Center Dare Rule</h3>
-                    <p>If there's an even number of dares remaining, use the lower numbered dare of the two centermost dares.</p>
-                </div>
-            </div>
+        <div class="center-dare-section">
+          <div class="center-dare-info">
+            <h4>Center Dare Option</h4>
+            <p id="center-dare-text">
+              Dare #10: Strip naked and spank ass twenty times on each cheek
+            </p>
+            <button id="take-center-dare" class="btn btn-center">
+              Take Center Dare
+            </button>
+          </div>
         </div>
 
-        <div class="modal" id="result-modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Game Result</h2>
-                <div id="result-content">
-                    <!-- Result will be populated by JavaScript -->
-                </div>
-            </div>
+        <div class="dare-grid">
+          <h3>Dare List</h3>
+          <div id="dare-list" class="dare-grid-container">
+            <!-- Dares will be populated by JavaScript -->
+          </div>
         </div>
+
+        <div class="camera-section">
+          <h3>Camera</h3>
+          <div class="camera-container">
+            <video
+              id="camera-video"
+              autoplay
+              playsinline
+              style="display: none"
+            ></video>
+            <canvas id="camera-canvas" style="display: none"></canvas>
+            <div id="camera-placeholder" class="camera-placeholder">
+              <p>📹 Camera not active</p>
+              <p class="camera-hint">Click "Start Camera" to begin</p>
+            </div>
+            <div class="camera-controls">
+              <button id="start-camera" class="btn btn-camera">
+                Start Camera
+              </button>
+              <button
+                id="stop-camera"
+                class="btn btn-camera"
+                style="display: none"
+              >
+                Stop Camera
+              </button>
+              <button
+                id="capture-photo"
+                class="btn btn-camera"
+                style="display: none"
+              >
+                Capture Photo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-controls">
+          <button id="reset-game" class="btn btn-secondary">Reset Game</button>
+          <button id="show-rules" class="btn btn-info">Show Rules</button>
+        </div>
+      </div>
+
+      <div class="modal" id="rules-modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2>Game Rules</h2>
+          <div class="rules-content">
+            <h3>How to Play</h3>
+            <ul>
+              <li>This is a dice game similar to Deal or No Deal</li>
+              <li>
+                You need a twenty-sided dice (or use an online roller like
+                rolz.org)
+              </li>
+              <li>Two players: a Game Master and a Roller</li>
+              <li>The Roller rolls dice to eliminate dares from the list</li>
+              <li>The Game Master keeps track of rolled numbers</li>
+              <li>When only one dare remains, it must be completed</li>
+            </ul>
+
+            <h3>Roller Advantage</h3>
+            <p>
+              The Roller can end the game early by choosing the "center dare"
+              instead of continuing to roll. This gives them control over when
+              the game ends.
+            </p>
+
+            <h3>Center Dare Rule</h3>
+            <p>
+              If there's an even number of dares remaining, use the lower
+              numbered dare of the two centermost dares.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="result-modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2>Game Result</h2>
+          <div id="result-content">
+            <!-- Result will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
-
-

@@ -9,7 +9,8 @@ class DiceDareGame {
             roller: false,
             master: false
         };
-        
+        this.cameraStream = null;
+
         this.initializeEventListeners();
         this.updateDareDisplay();
     }
@@ -115,15 +116,28 @@ class DiceDareGame {
                 }
             });
         });
+
+        // Camera controls
+        document.getElementById('start-camera').addEventListener('click', () => {
+            this.startCamera();
+        });
+
+        document.getElementById('stop-camera').addEventListener('click', () => {
+            this.stopCamera();
+        });
+
+        document.getElementById('capture-photo').addEventListener('click', () => {
+            this.capturePhoto();
+        });
     }
 
     startGame() {
         this.gameStarted = true;
         this.applyFaceLimits();
-        
+
         document.querySelector('.game-setup').style.display = 'none';
         document.querySelector('.game-area').style.display = 'block';
-        
+
         this.updateDareDisplay();
         this.updateCenterDare();
         this.updateGameStats();
@@ -135,17 +149,17 @@ class DiceDareGame {
 
         const dice = document.getElementById('dice');
         const rollButton = document.getElementById('roll-dice');
-        
+
         // Disable button during roll
         rollButton.disabled = true;
         dice.classList.add('rolling');
-        
+
         // Simulate dice roll animation
         setTimeout(() => {
             const rollResult = Math.floor(Math.random() * 20) + 1;
             dice.textContent = rollResult;
             dice.classList.remove('rolling');
-            
+
             this.processRoll(rollResult);
             rollButton.disabled = false;
         }, 600);
@@ -159,7 +173,7 @@ class DiceDareGame {
         }
 
         this.rolledNumbers.add(rollResult);
-        
+
         // Find and eliminate the dare
         const dareToEliminate = this.dares.find(dare => dare.number === rollResult);
         if (dareToEliminate) {
@@ -197,7 +211,7 @@ class DiceDareGame {
 
         const sortedNumbers = remainingDares.map(dare => dare.number).sort((a, b) => a - b);
         const middleIndex = Math.floor(sortedNumbers.length / 2);
-        
+
         if (sortedNumbers.length % 2 === 0) {
             // Even number of dares - use lower of the two center dares
             return remainingDares.find(dare => dare.number === sortedNumbers[middleIndex - 1]);
@@ -228,7 +242,7 @@ class DiceDareGame {
         this.dares.forEach(dare => {
             const dareElement = document.createElement('div');
             dareElement.className = 'dare-item';
-            
+
             if (this.eliminatedDares.has(dare.number)) {
                 dareElement.classList.add('eliminated');
             }
@@ -246,7 +260,7 @@ class DiceDareGame {
     updateGameStats() {
         const remainingCount = document.getElementById('remaining-count');
         const rolledCount = document.getElementById('rolled-count');
-        
+
         remainingCount.textContent = this.getRemainingDares().length;
         rolledCount.textContent = this.rolledNumbers.size;
     }
@@ -254,7 +268,7 @@ class DiceDareGame {
     updateCurrentRoleDisplay() {
         const currentRoleElement = document.getElementById('current-role');
         const selectedRole = document.querySelector('input[name="role"]:checked').value;
-        
+
         if (selectedRole === 'roller') {
             currentRoleElement.textContent = '🎲 Roller';
         } else {
@@ -290,9 +304,9 @@ class DiceDareGame {
                 </p>
             </div>
         `;
-        
+
         this.showModal('result-modal');
-        
+
         // Disable game controls
         document.getElementById('roll-dice').disabled = true;
         document.getElementById('take-center-dare').disabled = true;
@@ -303,17 +317,20 @@ class DiceDareGame {
         this.rolledNumbers.clear();
         this.gameStarted = false;
         this.dares = this.initializeDares();
-        
+
+        // Stop camera if running
+        this.stopCamera();
+
         document.querySelector('.game-setup').style.display = 'block';
         document.querySelector('.game-area').style.display = 'none';
-        
+
         // Reset dice display
         document.getElementById('dice').textContent = '?';
-        
+
         // Reset buttons
         document.getElementById('roll-dice').disabled = false;
         document.getElementById('take-center-dare').disabled = false;
-        
+
         this.updateDareDisplay();
         this.updateGameStats();
     }
@@ -345,9 +362,9 @@ class DiceDareGame {
             animation: slideDown 0.3s ease-out;
         `;
         messageElement.textContent = message;
-        
+
         document.body.appendChild(messageElement);
-        
+
         // Remove message after 3 seconds
         setTimeout(() => {
             messageElement.style.animation = 'slideUp 0.3s ease-out';
@@ -355,6 +372,79 @@ class DiceDareGame {
                 document.body.removeChild(messageElement);
             }, 300);
         }, 3000);
+    }
+
+    async startCamera() {
+        try {
+            const video = document.getElementById('camera-video');
+            const placeholder = document.getElementById('camera-placeholder');
+            const startBtn = document.getElementById('start-camera');
+            const stopBtn = document.getElementById('stop-camera');
+            const captureBtn = document.getElementById('capture-photo');
+
+            // Request camera access
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                },
+                audio: false
+            });
+
+            video.srcObject = this.cameraStream;
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            captureBtn.style.display = 'inline-block';
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            this.showMessage('Unable to access camera. Please check permissions.');
+        }
+    }
+
+    stopCamera() {
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => track.stop());
+            this.cameraStream = null;
+        }
+
+        const video = document.getElementById('camera-video');
+        const placeholder = document.getElementById('camera-placeholder');
+        const startBtn = document.getElementById('start-camera');
+        const stopBtn = document.getElementById('stop-camera');
+        const captureBtn = document.getElementById('capture-photo');
+
+        video.srcObject = null;
+        video.style.display = 'none';
+        placeholder.style.display = 'block';
+        startBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+        captureBtn.style.display = 'none';
+    }
+
+    capturePhoto() {
+        const video = document.getElementById('camera-video');
+        const canvas = document.getElementById('camera-canvas');
+        const context = canvas.getContext('2d');
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        // Create download link
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dare-photo-${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this.showMessage('Photo captured and downloaded!');
+        }, 'image/png');
     }
 }
 
@@ -371,7 +461,7 @@ style.textContent = `
             transform: translateX(-50%) translateY(0);
         }
     }
-    
+
     @keyframes slideUp {
         from {
             opacity: 1;
