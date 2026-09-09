@@ -47,9 +47,49 @@
 
           <button id="start-game" class="btn btn-primary">Start Game</button>
         </div>
+
+        <!-- Online play -->
+        <div class="setup-section online-setup">
+          <h3>🌐 Play Online (cams + chat)</h3>
+          <input type="text" id="online-name" class="text-input name-input" placeholder="Your name" maxlength="16" />
+          <button id="host-room" class="btn btn-primary">⚔️ Host a Room</button>
+          <div class="join-row">
+            <input type="text" id="join-code" class="text-input" placeholder="Room code" maxlength="6" />
+            <button id="join-room" class="btn btn-primary">🚪 Join</button>
+          </div>
+          <p id="connect-status" class="muted"></p>
+          <p class="tip">📹 Streams go directly browser-to-browser — nothing is uploaded anywhere.</p>
+        </div>
+      </div>
+
+      <!-- Online lobby (hidden) -->
+      <div id="online-lobby" style="display: none">
+        <div class="setup-section share-panel">
+          <h3>🔗 Invite Your Roller/GM</h3>
+          <div class="share-row"><span id="share-link" class="share-link"></span></div>
+          <div class="share-actions">
+            <button id="copy-link" class="btn btn-camera">Copy</button>
+            <button id="text-link" class="btn btn-camera">📤 Text It</button>
+          </div>
+        </div>
+        <div id="video-grid-lobby" class="video-grid"></div>
+        <div id="lobby-players" class="turn-order"></div>
+        <div id="online-limits" style="margin: 15px 0">
+          <label style="color:#fff; margin-right: 15px">
+            <input type="checkbox" id="net-roller-face-limit" /> Roller face limit
+          </label>
+          <label style="color:#fff">
+            <input type="checkbox" id="net-master-face-limit" /> Game Master face limit
+          </label>
+        </div>
+        <button id="start-online-game" class="btn btn-primary" style="display: none">⚔️ Start Game</button>
+        <p id="waiting-host-note" class="muted" style="display: none">Waiting for the host to start…</p>
+        <button id="leave-lobby" class="btn btn-secondary">Leave</button>
       </div>
 
       <div class="game-area" style="display: none">
+        <div id="video-grid-game" class="video-grid"></div>
+        <div id="net-players" class="turn-order" style="display:none"></div>
         <div class="game-info">
           <div class="current-player">
             <span id="current-role">🎲 Roller</span>
@@ -173,6 +213,17 @@
       </div>
     </div>
 
+    <!-- Media controls -->
+    <div id="media-bar" class="media-bar" style="display:none">
+      <button id="toggle-mic" class="media-btn" title="Toggle mic">🎤</button>
+      <button id="toggle-cam" class="media-btn" title="Toggle camera">📷</button>
+    </div>
+
+    <!-- Chat mount point -->
+    <div id="chat-root"></div>
+
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="p2p.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

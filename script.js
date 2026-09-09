@@ -132,6 +132,7 @@ class DiceDareGame {
     }
 
     startGame() {
+        if (window.__onlineActive) return; // online flow owns this
         this.gameStarted = true;
         this.applyFaceLimits();
 
@@ -145,6 +146,7 @@ class DiceDareGame {
     }
 
     rollDice() {
+        if (window.__onlineActive) return; // online flow owns the roll button
         if (!this.gameStarted) return;
 
         const dice = document.getElementById('dice');
@@ -192,6 +194,7 @@ class DiceDareGame {
     }
 
     takeCenterDare() {
+        if (window.__onlineActive) return; // online flow owns this
         if (!this.gameStarted) return;
 
         const remainingDares = this.getRemainingDares();
@@ -313,6 +316,7 @@ class DiceDareGame {
     }
 
     resetGame() {
+        if (window.__onlineActive) return; // online flow owns this
         this.eliminatedDares.clear();
         this.rolledNumbers.clear();
         this.gameStarted = false;
@@ -477,7 +481,389 @@ document.head.appendChild(style);
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new DiceDareGame();
+    window.__diceGame = new DiceDareGame();
 });
+
+
+/* ============================================================
+   ONLINE MODE — P2P cams + chat + synced dare board (p2p.js)
+   Everyone runs the same deterministic logic; the Roller
+   broadcasts each resolved roll so boards never diverge.
+   ============================================================ */
+(function () {
+    const ROOM_PREFIX = 'dice';
+
+    let p2p = null;
+    let chat = null;
+
+    window.__onlineActive = false;
+
+    const S = {
+        phase: 'lobby',      // lobby | play
+        players: [],         // [{id,name}]
+        rollerId: null,      // the person doing the dares
+        limits: { roller: false, master: false }
+    };
+
+    const remoteStreams = new Map();
+
+    const $ = (id) => document.getElementById(id);
+    const game = () => window.__diceGame;
+    const me = () => p2p && p2p.me;
+    const isHost = () => p2p && p2p.isHost;
+    const isRoller = () => S.rollerId === (me() && me().id);
+    const canDrive = () => isRoller() || isHost();
+    const rollerName = () => (S.players.find((p) => p.id === S.rollerId) || {}).name || '…';
+
+    /* ---------------- connect ---------------- */
+
+    async function connect(asHost, code) {
+        const name = $('online-name').value.trim() || 'Gooner ' + Math.floor(Math.random() * 90 + 10);
+        $('connect-status').textContent = 'Getting your cam ready…';
+
+        p2p = new P2PRoom({ prefix: ROOM_PREFIX });
+        p2p.onRosterChange = () => { renderLobby(); };
+        p2p.onStream = (id, who, stream) => {
+            remoteStreams.set(id, stream);
+            addTile(id, who, stream, false);
+        };
+        p2p.onStreamRemoved = (id) => { remoteStreams.delete(id); removeTile(id); };
+        p2p.onPeerGone = (id, who) => {
+            chat && chat.addMessage({ name: '', text: `${who} left the room`, system: true });
+            if (S.phase === 'play' && id === S.rollerId) {
+                chat && chat.addMessage({ name: '', text: '⚠️ The roller left!', system: true });
+            }
+        };
+        p2p.onHostGone = () => {
+            alert('The host left — game over.');
+            location.hash = '';
+            location.reload();
+        };
+        p2p.onHostMessage = onHostMessage;
+        p2p.onPeerMessage = () => {}; // no peer actions needed; roller drives locally
+        p2p.onAnyMessage = (peerId, msg) => {
+            if (msg && msg.type === 'chat') chat && chat.addMessage({ name: msg.name, text: msg.text, self: false });
+            // peers relay roller events through the mesh too
+            if (msg && msg.type === 'gameEvent') applyGameEvent(msg.event);
+        };
+        p2p.onError = (err) => { $('connect-status').textContent = '⚠️ ' + err.message; };
+
+        try {
+            if (asHost) {
+                const link = await p2p.host(name);
+                $('share-link').textContent = link;
+            } else {
+                $('connect-status').textContent = 'Joining room…';
+                await p2p.join(name, code);
+            }
+        } catch (err) {
+            $('connect-status').textContent = '⚠️ ' + (err.message || 'Could not connect.');
+            return;
+        }
+
+        chat = mountChatUI($('chat-root'), {
+            selfName: name,
+            onSend: (text) => {
+                p2p.sendAll({ type: 'chat', name: me().name, text });
+                chat.addMessage({ name: me().name, text, self: true });
+            }
+        });
+
+        window.__onlineActive = true;
+        $('media-bar').style.display = '';
+        document.querySelector('.game-setup').style.display = 'none';
+        $('online-lobby').style.display = 'block';
+        if (isHost()) $('start-online-game').style.display = '';
+        else $('waiting-host-note').style.display = '';
+        setTiles();
+        renderLobby();
+        renderLobby();
+        $('connect-status').textContent = '';
+    }
+
+    /* ---------------- tiles ---------------- */
+
+    function activeGrid() {
+        return getComputedStyle(document.querySelector('.game-area')).display !== 'none'
+            ? $('video-grid-game')
+            : $('video-grid-lobby');
+    }
+
+    function setTiles() {
+        const grid = activeGrid();
+        if (!grid || !p2p) return;
+        grid.innerHTML = '';
+        addTile(me().id, me().name + ' (you)', p2p.localStream, true);
+        p2p.roster.forEach((p) => {
+            if (p.id !== me().id && remoteStreams.has(p.id)) addTile(p.id, p.name, remoteStreams.get(p.id), false);
+        });
+    }
+
+    function addTile(peerId, label, stream, muted) {
+        const grid = activeGrid();
+        if (!grid) return;
+        let tile = grid.querySelector(`[data-peer="${peerId}"]`);
+        if (!tile) {
+            tile = document.createElement('div');
+            tile.className = 'video-tile';
+            tile.dataset.peer = peerId;
+            tile.innerHTML = '<video autoplay playsinline></video><span class="tile-label"></span>';
+            grid.appendChild(tile);
+        }
+        const v = tile.querySelector('video');
+        v.muted = muted;
+        if (v.srcObject !== stream) v.srcObject = stream;
+        tile.querySelector('.tile-label').textContent = label;
+    }
+
+    function removeTile(peerId) {
+        document.querySelectorAll(`[data-peer="${peerId}"]`).forEach((t) => t.remove());
+    }
+
+    /* ---------------- lobby ---------------- */
+
+    function renderLobby() {
+        if (!p2p) return;
+        const wrap = $('lobby-players');
+        wrap.innerHTML = '';
+        p2p.roster.forEach((p, i) => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = (i === 0 ? '👑 ' : '') + p.name + (p.id === me().id ? ' (you)' : '');
+            wrap.appendChild(chip);
+        });
+    }
+
+    /* ---------------- game events (mesh broadcast, everyone applies) ---------------- */
+
+    function broadcastEvent(event) {
+        p2p.sendAll({ type: 'gameEvent', event });
+    }
+
+    function onHostMessage(msg) {
+        if (msg && msg.type === 'gameEvent') applyGameEvent(msg.event);
+        if (msg && msg.type === 'state' && msg.game) {
+            // host start snapshot
+            Object.assign(S, msg.game);
+            netStartGame(true);
+        }
+    }
+
+    function applyGameEvent(event) {
+        switch (event.kind) {
+            case 'start':
+                S.players = event.players;
+                S.rollerId = event.rollerId;
+                S.limits = event.limits;
+                netStartGame(false);
+                break;
+            case 'roll':
+                netApplyRoll(event.rollResult, event.number);
+                break;
+            case 'center':
+                game().endGameWithDare(game().dares.find((d) => d.number === event.number));
+                lockControlsForViewers();
+                break;
+            case 'reset':
+                netReset();
+                break;
+        }
+    }
+
+    /* ---------------- host/roller actions ---------------- */
+
+    function hostStartGame() {
+        const rollerId = p2p.roster.length > 1 ? p2p.roster[1].id : me().id;
+        const event = {
+            kind: 'start',
+            players: p2p.roster.map((p) => ({ id: p.id, name: p.name })),
+            rollerId,
+            limits: {
+                roller: $('net-roller-face-limit').checked,
+                master: $('net-master-face-limit').checked
+            }
+        };
+        Object.assign(S, { players: event.players, rollerId, limits: event.limits });
+        broadcastEvent(event);
+        netStartGame(false);
+    }
+
+    function isDrivingThisDevice() { return canDrive(); }
+
+    function netStartGame() {
+        const g = game();
+        g.gameStarted = true;
+        g.dares = g.initializeDares();
+        g.eliminatedDares.clear();
+        g.rolledNumbers.clear();
+        g.faceLimits = { roller: S.limits.roller, master: S.limits.master };
+        g.applyFaceLimits();
+
+        $('online-lobby').style.display = 'none';
+        document.querySelector('.game-setup').style.display = 'none';
+        document.querySelector('.game-area').style.display = 'block';
+        document.querySelector('.camera-section').style.display = 'none'; // p2p cams instead
+        document.querySelector('.role-selector').style.display = 'none';
+
+        $('current-role').textContent = '🎲 Roller: ' + rollerName();
+        $('net-players').style.display = '';
+        $('dice').textContent = '?';
+
+        g.updateDareDisplay();
+        g.updateCenterDare();
+        g.updateGameStats();
+        setTiles();
+        lockControlsForViewers();
+        renderNetChips();
+    }
+
+    function renderNetChips() {
+        const wrap = $('net-players');
+        wrap.innerHTML = '';
+        S.players.forEach((p) => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            if (p.id === S.rollerId) chip.classList.add('up-next');
+            const roleTag = p.id === S.rollerId ? '🎲 ' : '👑 ';
+            chip.textContent = roleTag + p.name + (p.id === (me() && me().id) ? ' (you)' : '');
+            wrap.appendChild(chip);
+        });
+    }
+
+    function lockControlsForViewers() {
+        const locked = !canDrive();
+        $('roll-dice').style.display = locked ? 'none' : '';
+        $('take-center-dare').style.display = locked ? 'none' : '';
+        $('reset-game').style.display = isHost() ? '' : 'none';
+    }
+
+    function netRoll() {
+        const g = game();
+        const dice = $('dice');
+        const rollButton = $('roll-dice');
+        rollButton.disabled = true;
+        dice.classList.add('rolling');
+
+        setTimeout(() => {
+            const rollResult = Math.floor(Math.random() * 20) + 1;
+            dice.textContent = rollResult;
+            dice.classList.remove('rolling');
+            rollButton.disabled = false;
+
+            if (g.rolledNumbers.has(rollResult)) {
+                g.showMessage(`Number ${rollResult} was already rolled! Roll again.`);
+                broadcastEvent({ kind: 'chatRoll', rollResult, note: 'duplicate' });
+                return;
+            }
+            broadcastEvent({ kind: 'roll', rollResult, number: rollResult });
+            netApplyRoll(rollResult, rollResult);
+        }, 600);
+    }
+
+    function netApplyRoll(rollResult, number) {
+        const g = game();
+        $('dice').textContent = rollResult;
+
+        g.rolledNumbers.add(number);
+        const dare = g.dares.find((d) => d.number === number);
+        if (dare) {
+            g.eliminatedDares.add(number);
+            g.showMessage(`Dare #${number} eliminated: ${dare.text}`);
+        }
+        g.updateDareDisplay();
+        g.updateCenterDare();
+        g.updateGameStats();
+
+        if (g.getRemainingDares().length === 1) {
+            g.endGame(); // deterministic for everyone: same eliminated set
+            lockControlsForViewers();
+        }
+    }
+
+    function netTakeCenter() {
+        const center = game().getCenterDare();
+        if (!center) return;
+        broadcastEvent({ kind: 'center', number: center.number });
+        game().endGameWithDare(center);
+        lockControlsForViewers();
+    }
+
+    function netReset() {
+        const g = game();
+        g.eliminatedDares.clear();
+        g.rolledNumbers.clear();
+        g.dares = g.initializeDares();
+        g.faceLimits = { ...S.limits };
+        g.applyFaceLimits();
+        $('dice').textContent = '?';
+        g.updateDareDisplay();
+        g.updateCenterDare();
+        g.updateGameStats();
+        lockControlsForViewers();
+    }
+
+    /* ---------------- events ---------------- */
+
+    function init() {
+        $('host-room').addEventListener('click', () => connect(true));
+        $('join-room').addEventListener('click', () => {
+            const code = $('join-code').value.trim().toLowerCase();
+            if (code.length !== 6) { $('connect-status').textContent = 'Enter the 6-character room code.'; return; }
+            connect(false, code);
+        });
+
+        const m = location.hash.match(/#join=([a-z0-9]{6})/i);
+        if (m) {
+            $('join-code').value = m[1].toLowerCase();
+            $('connect-status').textContent = 'Link loaded — enter your name and hit Join.';
+            $('online-name').focus();
+        }
+
+        $('copy-link').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText($('share-link').textContent);
+                $('copy-link').textContent = 'Copied!';
+                setTimeout(() => ($('copy-link').textContent = 'Copy'), 1500);
+            } catch (_) {}
+        });
+        $('text-link').addEventListener('click', async () => {
+            const url = $('share-link').textContent;
+            if (navigator.share) {
+                try { await navigator.share({ title: 'Dice Dare Room', text: 'Roll for me — join the dare room:', url }); return; } catch (_) {}
+            }
+            try { await navigator.clipboard.writeText(url); alert('Link copied — text it to your buds!'); } catch (_) {}
+        });
+
+        $('start-online-game').addEventListener('click', hostStartGame);
+        $('leave-lobby').addEventListener('click', () => { p2p && p2p.destroy(); location.hash = ''; location.reload(); });
+
+        // override shared buttons (class methods early-return when online)
+        $('roll-dice').addEventListener('click', () => {
+            if (!window.__onlineActive) return;
+            if (canDrive() && game().gameStarted) netRoll();
+        });
+        $('take-center-dare').addEventListener('click', () => {
+            if (!window.__onlineActive) return;
+            if (canDrive()) netTakeCenter();
+        });
+        $('reset-game').addEventListener('click', () => {
+            if (!window.__onlineActive) return;
+            if (!isHost()) return;
+            broadcastEvent({ kind: 'reset' });
+            netReset();
+        });
+
+        $('toggle-mic').addEventListener('click', () => {
+            const on = p2p && p2p.toggleMic();
+            $('toggle-mic').classList.toggle('media-off', !on);
+        });
+        $('toggle-cam').addEventListener('click', () => {
+            const on = p2p && p2p.toggleCam();
+            $('toggle-cam').classList.toggle('media-off', !on);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+})();
 
 
