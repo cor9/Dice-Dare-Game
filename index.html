@@ -53,6 +53,7 @@
         <div class="setup-section online-setup">
           <h3>🌐 Play Online (cams + chat)</h3>
           <input type="text" id="online-name" class="text-input name-input" placeholder="Your name" maxlength="16" />
+          <input type="text" id="passwordInput" class="text-input name-input" placeholder="Room password (blank = public + listed on hub)" maxlength="24" />
           <button id="host-room" class="btn btn-primary">⚔️ Host a Room</button>
           <div class="join-row">
             <input type="text" id="join-code" class="text-input" placeholder="Room code" maxlength="6" />
@@ -224,7 +225,9 @@
     <div id="chat-root"></div>
 
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.js"></script>
     <script src="p2p.js"></script>
+    <script src="lk.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

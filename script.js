@@ -505,7 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
         limits: { roller: false, master: false }
     };
 
-    const remoteStreams = new Map();
+    const tiles = new Map(); // identity -> { name, stream, muted }
+    let lk = null;
 
     const $ = (id) => document.getElementById(id);
     const game = () => window.__diceGame;
@@ -521,13 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = $('online-name').value.trim() || 'Gooner ' + Math.floor(Math.random() * 90 + 10);
         $('connect-status').textContent = 'Getting your cam ready…';
 
-        p2p = new P2PRoom({ prefix: ROOM_PREFIX });
+        p2p = new P2PRoom({ prefix: ROOM_PREFIX, requireMedia: false }); // data channels only
         p2p.onRosterChange = () => { renderLobby(); };
-        p2p.onStream = (id, who, stream) => {
-            remoteStreams.set(id, stream);
-            addTile(id, who, stream, false);
-        };
-        p2p.onStreamRemoved = (id) => { remoteStreams.delete(id); removeTile(id); };
         p2p.onPeerGone = (id, who) => {
             chat && chat.addMessage({ name: '', text: `${who} left the room`, system: true });
             if (S.phase === 'play' && id === S.rollerId) {
@@ -552,9 +548,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (asHost) {
                 const link = await p2p.host(name);
                 $('share-link').textContent = link;
+                p2p.setRoomMeta({ title: "Dice Dare Room", password: $("passwordInput").value.trim() });
+                await p2p.connectHub(me().name);
+                p2p.advertiseRoom();
             } else {
                 $('connect-status').textContent = 'Joining room…';
-                await p2p.join(name, code);
+                await p2p.join(name, code, $("passwordInput").value.trim());
             }
         } catch (err) {
             $('connect-status').textContent = '⚠️ ' + (err.message || 'Could not connect.');
@@ -568,6 +567,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 chat.addMessage({ name: me().name, text, self: true });
             }
         });
+
+        // ---- LiveKit cams (media layer) ----
+        lk = new LKMedia();
+        lk.onTile = (id, label, stream, isLocal) => {
+            tiles.set(id, { name: label, stream, muted: isLocal });
+            addTile(id, label, stream, isLocal);
+        };
+        lk.onRemoveTile = (id) => { tiles.delete(id); removeTile(id); };
+        lk.onError = (err) => { $('connect-status').textContent = '⚠️ ' + err.message; };
+        await lk.connect(p2p.hostId, p2p.me.id, name);
 
         window.__onlineActive = true;
         $('media-bar').style.display = '';
@@ -591,12 +600,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setTiles() {
         const grid = activeGrid();
-        if (!grid || !p2p) return;
+        if (!grid) return;
         grid.innerHTML = '';
-        addTile(me().id, me().name + ' (you)', p2p.localStream, true);
-        p2p.roster.forEach((p) => {
-            if (p.id !== me().id && remoteStreams.has(p.id)) addTile(p.id, p.name, remoteStreams.get(p.id), false);
-        });
+        tiles.forEach((t, id) => addTile(id, t.name, t.stream, t.muted));
     }
 
     function addTile(peerId, label, stream, muted) {
@@ -853,12 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
             netReset();
         });
 
-        $('toggle-mic').addEventListener('click', () => {
-            const on = p2p && p2p.toggleMic();
+        $('toggle-mic').addEventListener('click', async () => {
+            const on = lk ? await lk.toggleMic() : false;
             $('toggle-mic').classList.toggle('media-off', !on);
         });
-        $('toggle-cam').addEventListener('click', () => {
-            const on = p2p && p2p.toggleCam();
+        $('toggle-cam').addEventListener('click', async () => {
+            const on = lk ? await lk.toggleCam() : false;
             $('toggle-cam').classList.toggle('media-off', !on);
         });
     }
