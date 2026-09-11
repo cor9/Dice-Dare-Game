@@ -569,6 +569,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // ---- LiveKit cams (media layer) ----
+        window.LK_TILE_CONFIG = {
+            isHost: () => p2p && p2p.isHost,
+            kick: (id) => p2p.kickPeer(id),
+            selfId: () => (p2p && p2p.me && p2p.me.id) || null
+        };
         lk = new LKMedia();
         lk.onTile = (id, label, stream, isLocal) => {
             tiles.set(id, { name: label, stream, muted: isLocal });
