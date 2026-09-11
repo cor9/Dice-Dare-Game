@@ -647,12 +647,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function onHostMessage(msg) {
-        if (msg && msg.type === 'gameEvent') applyGameEvent(msg.event);
-        if (msg && msg.type === 'state' && msg.game) {
-            // host start snapshot
-            Object.assign(S, msg.game);
-            netStartGame(true);
-        }
+        // gameEvent is handled ONLY in onAnyMessage (avoid double-applying).
+        // 'state' snapshots are unused (start flows through gameEvent).
+        void msg;
     }
 
     function applyGameEvent(event) {
