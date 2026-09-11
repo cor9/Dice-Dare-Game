@@ -549,8 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const link = await p2p.host(name);
                 $('share-link').textContent = link;
                 p2p.setRoomMeta({ title: "Dice Dare Room", password: $("passwordInput").value.trim() });
-                await p2p.connectHub(me().name);
-                p2p.advertiseRoom();
+                // hub directory connects in the background so it never blocks the room
+                p2p.connectHub(me().name).then(() => p2p.advertiseRoom());
             } else {
                 $('connect-status').textContent = 'Joining room…';
                 await p2p.join(name, code, $("passwordInput").value.trim());
