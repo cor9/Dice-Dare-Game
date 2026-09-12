@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = $('online-name').value.trim() || 'Gooner ' + Math.floor(Math.random() * 90 + 10);
         $('connect-status').textContent = 'Getting your cam ready…';
 
-        p2p = new P2PRoom({ prefix: ROOM_PREFIX, requireMedia: false }); // data channels only
+        p2p = new P2PRoom({ prefix: ROOM_PREFIX, requireMedia: false, maxPeers: 5 }); // data channels only
         p2p.onRosterChange = () => { renderLobby(); };
         p2p.onPeerGone = (id, who) => {
             chat && chat.addMessage({ name: '', text: `${who} left the room`, system: true });
