@@ -21,3 +21,15 @@ body{background:radial-gradient(ellipse at 10% 0,#12534933,transparent 43%),radi
 .footer{background:#101116!important;color:#a5a4b7!important}
 .footer a{color:var(--club-teal)!important}
 .roller-status,.timer,.stats{background:#1c1e2b!important;color:#f0f0ea!important;border-color:#45475c!important}
+
+/* DiceDare: kill the giant white panels (white-on-washed-out) */
+.game-setup,.game-info,.dice-section,.center-dare-section,.camera-section,.dare-grid,.dare-grid-container,.modal-content{background:#1c1e2b!important;color:#f0f0ea!important;border:1px solid #45475c!important;border-radius:16px}
+.game-stats span{background:#272a3f!important;color:#f0f0ea!important;border:1px solid #4d5168!important;border-radius:18px}
+.dice{background:#272a3f!important;color:#f6f6f1!important;border:2px solid var(--club-teal)!important;border-radius:16px;box-shadow:0 6px 20px rgba(57,225,202,.2)}
+#center-dare-text{color:#f0f0ea!important}
+.current-player{color:var(--club-teal)!important;font-weight:800}
+.modal-content h2,.modal-content h3{color:#f6f6f1!important}
+.modal-content p,.modal-content li{color:#d9d8e0!important}
+.camera-placeholder p{color:#a7a6ba!important}
+.rules-content ul li{color:#f0f0ea!important}
+.limit-options label,.player-roles label{color:#f0f0ea!important}
