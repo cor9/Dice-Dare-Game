@@ -38,3 +38,5 @@ body{background:radial-gradient(ellipse at 10% 0,#12534933,transparent 43%),radi
 .game-area{background:#1c1e2b!important;border:1px solid #45475c!important;border-radius:22px;color:#f0f0ea}
 .game-controls{background:#1c1e2b!important}
 .dare-grid h3,.camera-section h3{color:#f6f6f1!important}
+.center-dare-info h4{color:#f6f6f1!important;font-weight:700}
+.dare-item .dare-text{color:#e8e8e2!important}
