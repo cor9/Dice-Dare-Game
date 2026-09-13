@@ -535,13 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
             location.hash = '';
             location.reload();
         };
-        p2p.onHostMessage = onHostMessage;
+        p2p.onHostMessage = () => {};
         p2p.onPeerMessage = () => {}; // no peer actions needed; roller drives locally
-        p2p.onAnyMessage = (peerId, msg) => {
-            if (msg && msg.type === 'chat') chat && chat.addMessage({ name: msg.name, text: msg.text, self: false });
-            // peers relay roller events through the mesh too
-            if (msg && msg.type === 'gameEvent') applyGameEvent(msg.event);
-        };
+        p2p.onAnyMessage = () => {};
         p2p.onError = (err) => { $('connect-status').textContent = '⚠️ ' + err.message; };
 
         try {
@@ -563,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chat = mountChatUI($('chat-root'), {
             selfName: name,
             onSend: (text) => {
-                p2p.sendAll({ type: 'chat', name: me().name, text });
+                lk && lk.sendToAll({ type: 'chat', name: me().name, text });
                 chat.addMessage({ name: me().name, text, self: true });
             }
         });
@@ -581,6 +577,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         lk.onRemoveTile = (id) => { tiles.delete(id); removeTile(id); };
         lk.onError = (err) => { $('connect-status').textContent = '⚠️ ' + err.message; };
+
+        // LiveKit data pipe: chat + game events replace PeerJS for live sync
+        lk.onData = (fromId, msg) => {
+            if (!msg || typeof msg !== 'object' || !chat) return;
+            if (msg.type === 'chat') {
+                chat.addMessage({ name: msg.name, text: msg.text, self: msg.name === (me() && me().name) });
+                return;
+            }
+            if (msg.type === 'gameEvent') applyGameEvent(msg.event);
+        };
+
         await lk.connect(p2p.hostId, p2p.me.id, name);
 
         window.__onlineActive = true;
@@ -648,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------------- game events (mesh broadcast, everyone applies) ---------------- */
 
     function broadcastEvent(event) {
-        p2p.sendAll({ type: 'gameEvent', event });
+        lk && lk.sendToAll({ type: 'gameEvent', event });
     }
 
     function onHostMessage(msg) {
