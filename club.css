@@ -33,3 +33,8 @@ body{background:radial-gradient(ellipse at 10% 0,#12534933,transparent 43%),radi
 .camera-placeholder p{color:#a7a6ba!important}
 .rules-content ul li{color:#f0f0ea!important}
 .limit-options label,.player-roles label{color:#f0f0ea!important}
+
+/* the giant outer game card was still white */
+.game-area{background:#1c1e2b!important;border:1px solid #45475c!important;border-radius:22px;color:#f0f0ea}
+.game-controls{background:#1c1e2b!important}
+.dare-grid h3,.camera-section h3{color:#f6f6f1!important}
