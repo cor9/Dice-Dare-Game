@@ -507,6 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tiles = new Map(); // identity -> { name, stream, muted }
     let lk = null;
+    let myName = null;
+    let lkConnected = false; // media only joins once 2+ people are actually here —
+                              // most sessions are one person alone in a lobby
 
     const $ = (id) => document.getElementById(id);
     const game = () => window.__diceGame;
@@ -520,10 +523,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function connect(asHost, code) {
         const name = $('online-name').value.trim() || 'Gooner ' + Math.floor(Math.random() * 90 + 10);
-        $('connect-status').textContent = 'Getting your cam ready…';
+        myName = name;
+        $('connect-status').textContent = 'Connecting…';
 
         p2p = new P2PRoom({ prefix: ROOM_PREFIX, requireMedia: false, maxPeers: 5 }); // data channels only
-        p2p.onRosterChange = () => { renderLobby(); };
+        p2p.onRosterChange = () => { renderLobby(); ensureMediaConnection(); };
         p2p.onPeerGone = (id, who) => {
             chat && chat.addMessage({ name: '', text: `${who} left the room`, system: true });
             if (S.phase === 'play' && id === S.rollerId) {
@@ -588,7 +592,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (msg.type === 'gameEvent') applyGameEvent(msg.event);
         };
 
-        await lk.connect(p2p.hostId, p2p.me.id, name);
+        // Media only connects once a second person is actually in the room —
+        // connects right away here if we joined an already-occupied room.
+        ensureMediaConnection();
 
         window.__onlineActive = true;
         $('media-bar').style.display = '';
@@ -615,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!grid) return;
         grid.innerHTML = '';
         tiles.forEach((t, id) => addTile(id, t.name, t.stream, t.muted));
+        syncCamPlaceholder();
     }
 
     function addTile(peerId, label, stream, muted) {
@@ -650,6 +657,39 @@ document.addEventListener('DOMContentLoaded', () => {
             chip.textContent = (i === 0 ? '👑 ' : '') + p.name + (p.id === me().id ? ' (you)' : '');
             wrap.appendChild(chip);
         });
+        syncCamPlaceholder();
+    }
+
+    /** Cams (and the media connection they ride on) only join once a second
+     *  person actually shows up — most sessions are one person alone in a
+     *  lobby, and there's no point burning media-server resources for that. */
+    function ensureMediaConnection() {
+        if (!lk || !p2p) return;
+        const has2 = p2p.roster.length >= 2;
+        if (has2 && !lkConnected) {
+            lkConnected = true;
+            lk.connect(p2p.hostId, p2p.me.id, myName).catch((err) => lk.onError(err));
+        } else if (!has2 && lkConnected) {
+            lkConnected = false;
+            lk.disconnect();
+        }
+        syncCamPlaceholder();
+    }
+
+    function syncCamPlaceholder() {
+        const grid = activeGrid();
+        if (!grid) return;
+        let note = grid.querySelector('.cam-wait-note');
+        if (!lkConnected && tiles.size === 0) {
+            if (!note) {
+                note = document.createElement('p');
+                note.className = 'muted cam-wait-note';
+                note.textContent = '📷 Cams turn on once a friend joins';
+                grid.appendChild(note);
+            }
+        } else if (note) {
+            note.remove();
+        }
     }
 
     /* ---------------- game events (mesh broadcast, everyone applies) ---------------- */
