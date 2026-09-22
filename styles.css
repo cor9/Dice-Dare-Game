@@ -570,8 +570,23 @@ header h1 {
 .text-input:focus { border-color: #00d4ff; }
 .name-input { width: 100%; text-align: center; font-size: 1.05em; }
 
-.muted { color: #aaaaaa; font-size: 0.85em; }
+/* Online mode shares the dark club UI; keep helper text readable there and
+ * prevent it becoming low-contrast grey on DiceDare's older white panels. */
+.muted { color: #d7e3ea; font-size: 0.85em; }
 .tip { color: #8fb8cc; font-size: 0.8em; margin-top: 10px; }
+#online-lobby, #online-lobby .share-panel, #online-lobby .panel {
+    background: #151820;
+    color: #f4f1ec;
+    border: 1px solid #3d3a4e;
+    border-radius: 12px;
+}
+#online-lobby .muted { color: #b9c6d0; }
+#online-lobby .chip {
+    background: #292636;
+    border-color: #524363;
+    color: #d7c1ff;
+}
+#online-lobby .chip.up-next { border-color: #00d4ff; color: #00d4ff; }
 
 .home-actions { display: flex; flex-direction: column; gap: 15px; align-items: center; margin-bottom: 15px; }
 .join-row { display: flex; gap: 10px; width: 100%; justify-content: center; }
