@@ -32,7 +32,9 @@ body{background:radial-gradient(ellipse at 10% 0,#12534933,transparent 43%),radi
 .modal-content p,.modal-content li{color:#d9d8e0!important}
 .camera-placeholder p{color:#a7a6ba!important}
 .rules-content ul li{color:#f0f0ea!important}
-.limit-options label,.player-roles label{color:#f0f0ea!important}
+.limit-options label,.player-roles label{background:#272a3f!important;color:#f0f0ea!important;border:1px solid #4d5168!important}
+.limit-options label:hover,.player-roles label:hover{background:#30344e!important;border-color:#5f6478!important}
+.role-selector input[type="radio"]:checked + .role-label { color: var(--club-teal)!important; }
 
 /* the giant outer game card was still white */
 .game-area{background:#1c1e2b!important;border:1px solid #45475c!important;border-radius:22px;color:#f0f0ea}
